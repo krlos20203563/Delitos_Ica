@@ -1,0 +1,250 @@
+---
+title: "Delitos_Ica"
+author: "Carlos Crespín"
+date: "2024-07-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(sf)
+delitos=st_read("delitosIca.gpkg")
+```
+
+```{r}
+library(dplyr)
+delitos=select(delitos, c(4:6,,11:14,16,18,20,24,26,28,31,40))
+```
+
+```{r}
+library(ggplot2)
+library(sp)
+mapDIST=sf::read_sf("C:/Users/Carlos Daniel/Documents/Tesis_de_Licenciatura/Delincuencia_en_el_Peru/distritos_1874/DISTRITOS1874.shp")
+ggplot(mapDIST) + geom_sf()
+```
+
+```{r}
+asignar_color <- function(turno) {
+  colores <- c("madrugada" = "blue", "mañana" = "green", "tarde" = "orange", "noche" = "red")
+  return(colores[turno])
+}
+
+```
+
+```{r}
+delitos$color_turno <- asignar_color(delitos$turno_hech)
+```
+
+
+```{r}
+library(leaflet)
+mapa1 <- leaflet() %>%
+  addTiles() %>%
+  fitBounds(-15.36183, -13.07651, -76.31845, -74.93670) %>%
+  addCircleMarkers(data = delitos,
+                   lng = ~long_hecho,
+                   lat = ~lat_hecho,
+                   color = ~color_turno,
+                   radius = 6,
+                   fill = TRUE,
+                   fillOpacity = 0.2,
+                   opacity = 0.6,
+                   popup = ~paste(distrito, provincia, sep = "")) %>%
+  addPolygons(data = mapDIST, # Agregar las divisiones distritales
+              color = "black", # Color del borde
+              fillColor = "transparent", # Color de relleno transparente
+              fillOpacity = 0.5, # Opacidad del relleno
+              weight = 1) # Grosor del borde
+
+# Agregar leyenda
+mapa1 <- mapa1 %>%
+  addLegend("bottomleft",
+            colors = c("blue", "green", "orange", "red"),
+            labels = c("Madrugada", "Mañana", "Tarde", "Noche"),
+            opacity = 0.8)
+
+# Visualizar el mapa final
+mapa1
+
+```
+
+```{r}
+saveRDS(mapa1, "turnos_map.rds")
+```
+
+```{r}
+turno=table(patrimoniales$turno_hech)
+turnos=as.data.frame(turno)
+```
+
+
+```{r}
+delitos$one=1
+```
+
+```{r}
+tipos=table(delitos$tipo)
+tipo_delitos=as.data.frame(tipos)
+```
+
+```{r}
+library(ggthemes)
+bar_turno=ggplot(turnos, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  theme_minimal() +
+  labs(title = "Frecuencia de los turnos de ocurrencia",
+       x = "Turno de delitos",
+       y = "Numero de denuncias") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotar las etiquetas del eje x para mejor legibilidad
+bar_turno+theme_economist()
+```
+```{r}
+saveRDS(bar_turno,"bar_turno.rds")
+```
+
+
+
+```{r}
+library(ggthemes)
+bar_tipo=ggplot(tipo_delitos, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Frecuencia de Tipos de Delitos",
+       x = "Tipo de Delito",
+       y = "Numero de denuncias") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotar las etiquetas del eje x para mejor legibilidad
+bar_tipo
+```
+```{r}
+saveRDS(bar_tipo, file = "tipos_Ica.rds")
+```
+
+
+```{r}
+patrimoniales=filter(delitos, tipo=='PATRIMONIO (DELITO)')
+```
+
+
+```{r}
+modalidades=table(patrimoniales$modalidad)
+modalidades=as.data.frame(modalidades)
+```
+
+```{r}
+library(ggthemes)
+bar_modad=ggplot(modalidades, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Modalidades de delitos patrimoniales más recurrentes en Ica",
+       x = "Modalidades",
+       y = "Numero de denuncias") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotar las etiquetas del eje x para mejor legibilidad
+bar_modad
+```
+
+```{r}
+install.packages("kableExtra")
+```
+
+
+```{r}
+library(magrittr)
+mod_order=modalidades%>%arrange(desc(Freq))
+names(mod_order)=c("Modalidad","Denuncias")
+```
+
+```{r}
+head(mod_order,30)%>%kbl()%>%kable_styling()
+```
+
+```{r}
+library(rio)
+export(mod_order,"modalidades.xlsx")
+```
+
+
+```{r}
+table(patrimoniales$turno_hech)
+```
+
+```{r}
+coords <- st_coordinates(patrimoniales)
+
+```
+
+```{r}
+library(leaflet)
+library(sf)
+library(dplyr)
+```
+
+```{r}
+install.packages("leaflet.extras")
+```
+
+
+```{r}
+library(leaflet.extras)
+# Coordenadas del centro de Lima
+centroidIca <- st_centroid(st_union(patrimoniales))
+
+# Crear el mapa base centrado en Lima
+map <- leaflet() %>% 
+  addTiles(urlTemplate = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png') %>% 
+  setView(lng = st_coordinates(centroidIca)[1], lat = st_coordinates(centroidIca)[2], zoom = 10)
+
+# Añadir la capa de mapa de calor
+map <- map %>% 
+  addHeatmap(lng = coords[,1], lat = coords[,2], blur = 20, max = 0.05)
+
+# Mostrar el mapa
+map
+
+```
+
+```{r}
+saveRDS(map, file = "hm_Ica.rds")
+```
+
+
+```{r}
+dist_Ica <- patrimoniales %>%
+  group_by(distrito) %>%
+  summarise(total_denuncias = sum(one))
+dist_Ica
+```
+
+
+```{r}
+export(dist_Ica, "dist_Ica.xlsx")
+```
+
+```{r}
+distritos=import("dist_Ica.xlsx")
+dist_order=distritos%>%arrange(desc(total_denuncias))
+dist_order=select(dist_order,c(1,2))
+```
+
+```{r}
+export(dist_order, "dist_order.xlsx")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

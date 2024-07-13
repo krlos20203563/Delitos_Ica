@@ -1,0 +1,85 @@
+---
+title: "Caracterización del delito en Ica"
+author: Carlos Crespin
+date: "`r format(Sys.Date(), '%d de %B de %Y')`"
+output: 
+  flexdashboard::flex_dashboard:
+    storyboard: true
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(kableExtra)
+library(rio)# always
+```
+
+
+Parte_1
+===============================================================================
+
+Column {data-width=650}
+--------------------------------------------------------------------------------
+
+### Mapa de calor del delito en Ica
+
+```{r}
+readRDS("hm_Ica.rds") 
+```
+
+### Tipos de delitos 
+
+```{r}
+readRDS("tipos_Ica.rds")
+```
+
+Column {data-width=350}
+--------------------------------------------------------------------------------
+
+### Distritos con mayor cantidad de delitos
+
+```{r}
+distritos_delitos=import("dist_order.xlsx")
+head(distritos_delitos,30)%>%kbl()%>%kable_styling()
+```
+
+Parte_2
+================================================================================
+
+Column {data-width=650}
+--------------------------------------------------------------------------------
+
+### Mapa de turnos de delitos
+
+```{r}
+library(ggthemes)
+barra_turnos=readRDS("bar_turno.rds") 
+barra_turnos+theme_economist()
+```
+
+### Tipos de delitos 
+
+```{r}
+readRDS("turnos_map.rds")
+```
+
+Column {data-width=350}
+--------------------------------------------------------------------------------
+
+### Distritos con mayor cantidad de delitos
+
+```{r}
+modalidades_Ica=import("modalidades.xlsx")
+head(modalidades_Ica,30)%>%kbl()%>%kable_styling()
+```
+
+
+
+
+
+
+
+
+
+
+
+
